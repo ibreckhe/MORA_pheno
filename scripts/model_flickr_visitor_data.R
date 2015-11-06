@@ -117,31 +117,95 @@ dss_fit_snow$peak_day <- dss_fit_snow$melt_day + dss_fit_snow$max_dss
 weeks_snowmelt <- left_join(d_data_week[,1:5],d_snow[,1:3],by=c("year","nearest_center"))
 colnames(weeks_snowmelt) <- c("week","year","nearest_center","nphotos","nusers","melt_week")
 
-mod_week_all <- gam(nusers~s(week,melt_week,bs="tp",k=10)+
-                           s(week,nearest_center,bs="fs",k=7),
+mod_week_all <- gam(nusers~s(week,melt_week,bs="tp",k=12)+
+                           s(week,nearest_center,bs="fs",k=20),
                     family=nb(),optimizer="perf",data = weeks_snowmelt )
 summary(mod_week_all)
+plot(mod_week_all,pages=1,residuals=TRUE)
 
-gam_pred_data <- expand.grid(week=seq(1,53,by=0.5),melt_week=seq(10,35,by=0.5),
+gam_pred_data <- expand.grid(week=seq(1,53,by=0.1),melt_week=seq(10,35,by=0.1),
                              nearest_center=c("Mowich","Paradise","Sunrise","Tipsoo"))
 gam_pred_data$Users <- predict(mod_week_all,newdata=gam_pred_data,type="response")
 gam_pred_data$SE <- predict(mod_week_all,newdata=gam_pred_data,type="response",se.fit=TRUE)$se.fit
 
+##Finds the maximum week for each prediction.
+
+# Function to find the values that define 68.4% of the area under the curve.####
+gam_width <- function(week,pred,threshold=0.1586553){
+
+  # Converts to numeric vectors
+  week <- as.numeric(week)
+  pred <- as.numeric(pred)
+  
+  # Gets the bin width from the first pred interval.
+  bin_width <- week[2] - week[1]
+  
+  # Make sure that all predictions are positive and none are missing.
+  stopifnot(anyNA(pred)==FALSE,
+            anyNA(week)==FALSE,
+            any(pred<0)==FALSE)
+  
+  # Total area under the curve.
+  total_area <- sum(pred*bin_width,na.rm=TRUE)
+  
+  # Computes cumulative proportions in both directions
+  cumprop_up <- cumsum(pred)*bin_width/total_area
+  cumprop_down <- rev(cumsum(rev(pred))*bin_width)/total_area
+  
+  # Finds the indices of the first and last values greater than 0.158
+  lwr_index <- min(which(cumprop_up >= threshold))
+  upr_index <- max(which(cumprop_down >= threshold))
+  
+  # Finds the corresponding values of dss.
+  lwr_bound <- week[lwr_index]
+  upr_bound <- week[upr_index]
+  bounds <- c(lwr_bound,upr_bound)
+  names(bounds) <- c("lwr_bound","upr_bound")
+  
+  # Output
+  return(bounds)
+}
+
+##Computes optimum and width across the model fit.
+gam_pred_grp <- group_by(gam_pred_data,melt_week,nearest_center)
+gam_pred_max <- summarise(gam_pred_grp,weekmax=week[which.max(Users)],
+                                       weekstart=gam_width(week,Users,threshold=0.25)[1],
+                                       weekend=gam_width(week,Users,threshold=0.25)[2])
+
+##Adds flowering window
+flwr_start <- 23/7
+flwr_end <- 49/7
+flwr_max <- 36/7
+
+gam_pred_max$flwrstart <- gam_pred_max$melt_week + flwr_start
+gam_pred_max$flwrend <- gam_pred_max$melt_week + flwr_end
+gam_pred_max$flwrmax <- gam_pred_max$melt_week + flwr_max
+
+
+pdf("./figs/Flickr_gam_2d_fits.pdf",width=5,height=4)
 ggplot(gam_pred_data)+
   geom_raster(aes(y=week,x=melt_week,fill=Users),alpha=1)+
   scale_fill_gradientn(colours = rev(rainbow(8,start=0,end=0.6)))+
   geom_abline(slope=1,intercept=0)+
-#  geom_point(aes(y=week,x=melt_week,size=nusers),
-#             data=subset(weeks_snowmelt,nusers>0),alpha=0.1)+
-#  scale_shape(solid = FALSE)+
+  #geom_point(aes(y=week,x=melt_week,size=nphotos),
+  #           data=subset(weeks_snowmelt,nusers>0),alpha=0.1)+
+  scale_shape(solid = FALSE)+
+  geom_line(aes(x=melt_week,y=weekmax),size=0.5,linetype=3,data=gam_pred_max)+
+  geom_line(aes(x=melt_week,y=weekstart),size=0.5,linetype=2,data=gam_pred_max)+
+  geom_line(aes(x=melt_week,y=weekend),size=0.5,linetype=2,data=gam_pred_max)+
+  geom_line(aes(x=melt_week,y=flwrmax),color="white",size=0.5,linetype=3,data=gam_pred_max)+
+  geom_line(aes(x=melt_week,y=flwrstart),color="white",size=0.5,linetype=2,data=gam_pred_max)+
+  geom_line(aes(x=melt_week,y=flwrend),color="white",size=0.5,linetype=2,data=gam_pred_max)+
   scale_x_continuous(expand=c(0,0))+
   scale_y_continuous(expand=c(0,0))+
-  facet_grid(facets=.~nearest_center)+
+  facet_wrap(facets=~nearest_center)+
   coord_cartesian()+
   xlab("Week of Snow Melt")+
   ylab("Week of Year")+
   theme_bw()
+dev.off()
 
+pdf("./figs/Flickr_gam_2d_se.pdf",width=5,height=4)
 ggplot(gam_pred_data)+
   geom_raster(aes(y=week,x=melt_week,fill=SE),alpha=1)+
   scale_fill_gradientn(colours = rev(rainbow(8,start=0,end=0.6)))+
@@ -149,14 +213,17 @@ ggplot(gam_pred_data)+
   #  geom_point(aes(y=week,x=melt_week,size=nusers),
   #             data=subset(weeks_snowmelt,nusers>0),alpha=0.1)+
   #  scale_shape(solid = FALSE)+
+  geom_line(aes(x=melt_week,y=weekmax),size=0.5,linetype=3,data=gam_pred_max)+
+  geom_line(aes(x=melt_week,y=weekstart),size=0.5,linetype=2,data=gam_pred_max)+
+  geom_line(aes(x=melt_week,y=weekend),size=0.5,linetype=2,data=gam_pred_max)+
   scale_x_continuous(expand=c(0,0))+
   scale_y_continuous(expand=c(0,0))+
-  facet_grid(facets=.~nearest_center)+
+  facet_wrap(facets=~nearest_center)+
   coord_cartesian()+
   xlab("Week of Snow Melt")+
   ylab("Week of Year")+
   theme_bw()
-  
+dev.off()
 
 ##Determines sensitivity across all years.
 

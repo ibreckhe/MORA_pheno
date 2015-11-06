@@ -93,7 +93,6 @@ write.csv(d2015,"./data/flickr_subalp_2015.csv")
 ##Writes filtered data to disk.
 write.csv(d_f,"./data/MORA_flickr_metadata_all_2009_2015_cleaned.csv")
 
-
 ####Compares density distributions of photos across the year.####
 library(RColorBrewer)
 pal <- brewer.pal(7,name="Dark2")

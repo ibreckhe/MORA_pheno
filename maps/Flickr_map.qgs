@@ -20,37 +20,43 @@
       <layer-tree-layer expanded="0" checked="Qt::Unchecked" id="MORA_1000m_grid_2013cent20151027122300673" name="MORA_1000m_grid_2013cent">
         <customproperties/>
       </layer-tree-layer>
-      <layer-tree-layer expanded="0" checked="Qt::Unchecked" id="MORA_1000m_grid_2014cent20151027122300685" name="MORA_1000m_grid_2014cent">
+      <layer-tree-layer expanded="0" checked="Qt::Checked" id="MORA_1000m_grid_2014cent20151027122300685" name="MORA_1000m_grid_2014cent">
         <customproperties/>
       </layer-tree-layer>
-      <layer-tree-layer expanded="1" checked="Qt::Checked" id="MORA_1000m_grid_2015cent20151027122300698" name="MORA_1000m_grid_2015cent">
+      <layer-tree-layer expanded="1" checked="Qt::Unchecked" id="MORA_1000m_grid_2015cent20151027122300698" name="MORA_1000m_grid_2015cent">
         <customproperties/>
       </layer-tree-layer>
     </layer-tree-group>
     <layer-tree-layer expanded="1" checked="Qt::Unchecked" id="MORA_glaciers_200820151020171630293" name="MORA_glaciers_2008">
       <customproperties/>
     </layer-tree-layer>
-    <layer-tree-layer expanded="0" checked="Qt::Unchecked" id="snow_lme_pred_200920151020170851595" name="snow_lme_pred_2009">
+    <layer-tree-layer expanded="1" checked="Qt::Unchecked" id="MORA_elev_focal9m20151029093930128" name="MORA_elev_focal9m">
       <customproperties/>
     </layer-tree-layer>
-    <layer-tree-layer expanded="0" checked="Qt::Unchecked" id="snow_lme_pred_201020151020170839145" name="snow_lme_pred_2010">
+    <layer-tree-group expanded="1" checked="Qt::Checked" name="group1">
       <customproperties/>
-    </layer-tree-layer>
-    <layer-tree-layer expanded="0" checked="Qt::Unchecked" id="snow_lme_pred_201120151020132837274" name="snow_lme_pred_2011">
-      <customproperties/>
-    </layer-tree-layer>
-    <layer-tree-layer expanded="0" checked="Qt::Unchecked" id="snow_lme_pred_201220151020170826522" name="snow_lme_pred_2012">
-      <customproperties/>
-    </layer-tree-layer>
-    <layer-tree-layer expanded="0" checked="Qt::Unchecked" id="snow_lme_pred_201320151020170814552" name="snow_lme_pred_2013">
-      <customproperties/>
-    </layer-tree-layer>
-    <layer-tree-layer expanded="0" checked="Qt::Unchecked" id="snow_lme_pred_201420151020170801610" name="snow_lme_pred_2014">
-      <customproperties/>
-    </layer-tree-layer>
-    <layer-tree-layer expanded="0" checked="Qt::Unchecked" id="snow_lme_pred_201520151020132739129" name="snow_lme_pred_2015">
-      <customproperties/>
-    </layer-tree-layer>
+      <layer-tree-layer expanded="0" checked="Qt::Checked" id="snow_lme_pred_200920151020170851595" name="snow_lme_pred_2009">
+        <customproperties/>
+      </layer-tree-layer>
+      <layer-tree-layer expanded="0" checked="Qt::Checked" id="snow_lme_pred_201020151020170839145" name="snow_lme_pred_2010">
+        <customproperties/>
+      </layer-tree-layer>
+      <layer-tree-layer expanded="0" checked="Qt::Checked" id="snow_lme_pred_201120151020132837274" name="snow_lme_pred_2011">
+        <customproperties/>
+      </layer-tree-layer>
+      <layer-tree-layer expanded="0" checked="Qt::Checked" id="snow_lme_pred_201220151020170826522" name="snow_lme_pred_2012">
+        <customproperties/>
+      </layer-tree-layer>
+      <layer-tree-layer expanded="0" checked="Qt::Checked" id="snow_lme_pred_201320151020170814552" name="snow_lme_pred_2013">
+        <customproperties/>
+      </layer-tree-layer>
+      <layer-tree-layer expanded="0" checked="Qt::Checked" id="snow_lme_pred_201420151020170801610" name="snow_lme_pred_2014">
+        <customproperties/>
+      </layer-tree-layer>
+      <layer-tree-layer expanded="0" checked="Qt::Checked" id="snow_lme_pred_201520151020132739129" name="snow_lme_pred_2015">
+        <customproperties/>
+      </layer-tree-layer>
+    </layer-tree-group>
     <layer-tree-layer expanded="0" checked="Qt::Checked" id="MORA_NAIP_2009_rgb20151020173157201" name="MORA_NAIP_2009_rgb">
       <customproperties/>
     </layer-tree-layer>
@@ -59,10 +65,10 @@
   <mapcanvas>
     <units>meters</units>
     <extent>
-      <xmin>-13600822.03621217235922813</xmin>
-      <ymin>5876762.79540849570184946</ymin>
-      <xmax>-13502233.50786896422505379</xmax>
-      <ymax>5949208.56353434268385172</ymax>
+      <xmin>-13528179.71708663552999496</xmin>
+      <ymin>5919745.43714488577097654</ymin>
+      <xmax>-13526001.96938449889421463</xmax>
+      <ymax>5921665.00208724942058325</ymax>
     </extent>
     <rotation>0</rotation>
     <projections>1</projections>
@@ -88,9 +94,11 @@
       <layer_coordinate_transform destAuthId="EPSG:3857" srcAuthId="EPSG:4326" srcDatumTransform="-1" destDatumTransform="-1" layerid="MORA_boundary_WGS8420151020171759391"/>
       <layer_coordinate_transform destAuthId="EPSG:3857" srcAuthId="EPSG:26910" srcDatumTransform="1188" destDatumTransform="-1" layerid="MORA_1000m_grid_2010cent20151027122300647"/>
       <layer_coordinate_transform destAuthId="EPSG:3857" srcAuthId="EPSG:26910" srcDatumTransform="1188" destDatumTransform="-1" layerid="snow_lme_pred_201420151020170801610"/>
+      <layer_coordinate_transform destAuthId="EPSG:3857" srcAuthId="EPSG:26910" srcDatumTransform="1188" destDatumTransform="-1" layerid="MORA_1000m_grid20151027170001329"/>
       <layer_coordinate_transform destAuthId="EPSG:3857" srcAuthId="EPSG:26910" srcDatumTransform="1188" destDatumTransform="-1" layerid="snow_lme_pred_200920151020170851595"/>
       <layer_coordinate_transform destAuthId="EPSG:3857" srcAuthId="EPSG:26910" srcDatumTransform="1188" destDatumTransform="-1" layerid="MORA_1000m_grid_2015cent20151027122300698"/>
       <layer_coordinate_transform destAuthId="EPSG:3857" srcAuthId="EPSG:26910" srcDatumTransform="1188" destDatumTransform="-1" layerid="snow_lme_pred_201120151020132837274"/>
+      <layer_coordinate_transform destAuthId="EPSG:3857" srcAuthId="EPSG:26910" srcDatumTransform="1188" destDatumTransform="-1" layerid="MORA_elev_focal9m20151029093930128"/>
       <layer_coordinate_transform destAuthId="EPSG:3857" srcAuthId="EPSG:26910" srcDatumTransform="1188" destDatumTransform="-1" layerid="snow_lme_pred_201220151020170826522"/>
       <layer_coordinate_transform destAuthId="EPSG:3857" srcAuthId="EPSG:26910" srcDatumTransform="1188" destDatumTransform="-1" layerid="snow_lme_pred_201520151020132739129"/>
       <layer_coordinate_transform destAuthId="EPSG:3857" srcAuthId="EPSG:26910" srcDatumTransform="1188" destDatumTransform="-1" layerid="MORA_srad_yearsum_9m20151027124158537"/>
@@ -119,6 +127,7 @@
       <item>MORA_1000m_grid_2013cent20151027122300673</item>
       <item>MORA_1000m_grid_2014cent20151027122300685</item>
       <item>MORA_1000m_grid_2015cent20151027122300698</item>
+      <item>MORA_elev_focal9m20151029093930128</item>
     </custom-order>
   </layer-tree-canvas>
   <legend updateDrawingOrder="true">
@@ -148,14 +157,14 @@
           <legendlayerfile isInOverview="0" layerid="MORA_1000m_grid_2013cent20151027122300673" visible="0"/>
         </filegroup>
       </legendlayer>
-      <legendlayer drawingOrder="-1" open="false" checked="Qt::Unchecked" name="MORA_1000m_grid_2014cent" showFeatureCount="0">
+      <legendlayer drawingOrder="-1" open="false" checked="Qt::Checked" name="MORA_1000m_grid_2014cent" showFeatureCount="0">
         <filegroup open="false" hidden="false">
-          <legendlayerfile isInOverview="0" layerid="MORA_1000m_grid_2014cent20151027122300685" visible="0"/>
+          <legendlayerfile isInOverview="0" layerid="MORA_1000m_grid_2014cent20151027122300685" visible="1"/>
         </filegroup>
       </legendlayer>
-      <legendlayer drawingOrder="-1" open="true" checked="Qt::Checked" name="MORA_1000m_grid_2015cent" showFeatureCount="0">
+      <legendlayer drawingOrder="-1" open="true" checked="Qt::Unchecked" name="MORA_1000m_grid_2015cent" showFeatureCount="0">
         <filegroup open="true" hidden="false">
-          <legendlayerfile isInOverview="0" layerid="MORA_1000m_grid_2015cent20151027122300698" visible="1"/>
+          <legendlayerfile isInOverview="0" layerid="MORA_1000m_grid_2015cent20151027122300698" visible="0"/>
         </filegroup>
       </legendlayer>
     </legendgroup>
@@ -164,48 +173,55 @@
         <legendlayerfile isInOverview="0" layerid="MORA_glaciers_200820151020171630293" visible="0"/>
       </filegroup>
     </legendlayer>
-    <legendlayer drawingOrder="-1" open="false" checked="Qt::Unchecked" name="snow_lme_pred_2009" showFeatureCount="0">
-      <filegroup open="false" hidden="false">
-        <legendlayerfile isInOverview="0" layerid="snow_lme_pred_200920151020170851595" visible="0"/>
+    <legendlayer drawingOrder="-1" open="true" checked="Qt::Unchecked" name="MORA_elev_focal9m" showFeatureCount="0">
+      <filegroup open="true" hidden="false">
+        <legendlayerfile isInOverview="0" layerid="MORA_elev_focal9m20151029093930128" visible="0"/>
       </filegroup>
     </legendlayer>
-    <legendlayer drawingOrder="-1" open="false" checked="Qt::Unchecked" name="snow_lme_pred_2010" showFeatureCount="0">
-      <filegroup open="false" hidden="false">
-        <legendlayerfile isInOverview="0" layerid="snow_lme_pred_201020151020170839145" visible="0"/>
-      </filegroup>
-    </legendlayer>
-    <legendlayer drawingOrder="-1" open="false" checked="Qt::Unchecked" name="snow_lme_pred_2011" showFeatureCount="0">
-      <filegroup open="false" hidden="false">
-        <legendlayerfile isInOverview="0" layerid="snow_lme_pred_201120151020132837274" visible="0"/>
-      </filegroup>
-    </legendlayer>
-    <legendlayer drawingOrder="-1" open="false" checked="Qt::Unchecked" name="snow_lme_pred_2012" showFeatureCount="0">
-      <filegroup open="false" hidden="false">
-        <legendlayerfile isInOverview="0" layerid="snow_lme_pred_201220151020170826522" visible="0"/>
-      </filegroup>
-    </legendlayer>
-    <legendlayer drawingOrder="-1" open="false" checked="Qt::Unchecked" name="snow_lme_pred_2013" showFeatureCount="0">
-      <filegroup open="false" hidden="false">
-        <legendlayerfile isInOverview="0" layerid="snow_lme_pred_201320151020170814552" visible="0"/>
-      </filegroup>
-    </legendlayer>
-    <legendlayer drawingOrder="-1" open="false" checked="Qt::Unchecked" name="snow_lme_pred_2014" showFeatureCount="0">
-      <filegroup open="false" hidden="false">
-        <legendlayerfile isInOverview="0" layerid="snow_lme_pred_201420151020170801610" visible="0"/>
-      </filegroup>
-    </legendlayer>
-    <legendlayer drawingOrder="-1" open="false" checked="Qt::Unchecked" name="snow_lme_pred_2015" showFeatureCount="0">
-      <filegroup open="false" hidden="false">
-        <legendlayerfile isInOverview="0" layerid="snow_lme_pred_201520151020132739129" visible="0"/>
-      </filegroup>
-    </legendlayer>
+    <legendgroup open="true" checked="Qt::Checked" name="group1">
+      <legendlayer drawingOrder="-1" open="false" checked="Qt::Checked" name="snow_lme_pred_2009" showFeatureCount="0">
+        <filegroup open="false" hidden="false">
+          <legendlayerfile isInOverview="0" layerid="snow_lme_pred_200920151020170851595" visible="1"/>
+        </filegroup>
+      </legendlayer>
+      <legendlayer drawingOrder="-1" open="false" checked="Qt::Checked" name="snow_lme_pred_2010" showFeatureCount="0">
+        <filegroup open="false" hidden="false">
+          <legendlayerfile isInOverview="0" layerid="snow_lme_pred_201020151020170839145" visible="1"/>
+        </filegroup>
+      </legendlayer>
+      <legendlayer drawingOrder="-1" open="false" checked="Qt::Checked" name="snow_lme_pred_2011" showFeatureCount="0">
+        <filegroup open="false" hidden="false">
+          <legendlayerfile isInOverview="0" layerid="snow_lme_pred_201120151020132837274" visible="1"/>
+        </filegroup>
+      </legendlayer>
+      <legendlayer drawingOrder="-1" open="false" checked="Qt::Checked" name="snow_lme_pred_2012" showFeatureCount="0">
+        <filegroup open="false" hidden="false">
+          <legendlayerfile isInOverview="0" layerid="snow_lme_pred_201220151020170826522" visible="1"/>
+        </filegroup>
+      </legendlayer>
+      <legendlayer drawingOrder="-1" open="false" checked="Qt::Checked" name="snow_lme_pred_2013" showFeatureCount="0">
+        <filegroup open="false" hidden="false">
+          <legendlayerfile isInOverview="0" layerid="snow_lme_pred_201320151020170814552" visible="1"/>
+        </filegroup>
+      </legendlayer>
+      <legendlayer drawingOrder="-1" open="false" checked="Qt::Checked" name="snow_lme_pred_2014" showFeatureCount="0">
+        <filegroup open="false" hidden="false">
+          <legendlayerfile isInOverview="0" layerid="snow_lme_pred_201420151020170801610" visible="1"/>
+        </filegroup>
+      </legendlayer>
+      <legendlayer drawingOrder="-1" open="false" checked="Qt::Checked" name="snow_lme_pred_2015" showFeatureCount="0">
+        <filegroup open="false" hidden="false">
+          <legendlayerfile isInOverview="0" layerid="snow_lme_pred_201520151020132739129" visible="1"/>
+        </filegroup>
+      </legendlayer>
+    </legendgroup>
     <legendlayer drawingOrder="-1" open="false" checked="Qt::Checked" name="MORA_NAIP_2009_rgb" showFeatureCount="0">
       <filegroup open="false" hidden="false">
         <legendlayerfile isInOverview="0" layerid="MORA_NAIP_2009_rgb20151020173157201" visible="1"/>
       </filegroup>
     </legendlayer>
   </legend>
-  <Composer title="snow_maps" visible="1">
+  <Composer title="snow_maps" visible="0">
     <Composition gridVisible="0" printResolution="300" paperWidth="297" snapGridOffsetX="0" guidesVisible="1" snapGridResolution="10" snapGridOffsetY="0" alignmentSnap="1" snapping="0" snapTolerancePixels="5" numPages="1" paperHeight="210" smartGuides="1" printAsRaster="0" generateWorldFile="0">
       <symbol alpha="1" type="fill" name="">
         <layer pass="0" class="SimpleFill" locked="0">
@@ -636,7 +652,7 @@
       </ComposerMap>
     </Composition>
   </Composer>
-  <projectlayers layercount="16">
+  <projectlayers layercount="17">
     <maplayer minimumScale="-4.65661e-10" maximumScale="1e+08" simplifyDrawingHints="0" minLabelScale="0" maxLabelScale="1e+08" simplifyDrawingTol="1" geometry="Point" simplifyMaxScale="1" type="vector" hasScaleBasedVisibilityFlag="0" simplifyLocal="1" scaleBasedLabelVisibilityFlag="0">
       <id>MORA_1000m_grid_2009cent20151027122300634</id>
       <datasource>../data/MORA_1000m_grid_2009cent.shp</datasource>
@@ -659,7 +675,7 @@
         </spatialrefsys>
       </srs>
       <provider encoding="UTF-8">ogr</provider>
-      <previewExpression></previewExpression>
+      <previewExpression>COALESCE( "ID", '&lt;NULL>' )</previewExpression>
       <vectorjoins/>
       <expressionfields/>
       <map-layer-style-manager current="">
@@ -682,6 +698,12 @@
           <widgetv2config IsMultiline="0" fieldEditable="1" UseHtml="0" labelOnTop="0"/>
         </edittype>
         <edittype widgetv2type="TextEdit" name="PNTCNT">
+          <widgetv2config IsMultiline="0" fieldEditable="1" UseHtml="0" labelOnTop="0"/>
+        </edittype>
+        <edittype widgetv2type="TextEdit" name="X">
+          <widgetv2config IsMultiline="0" fieldEditable="1" UseHtml="0" labelOnTop="0"/>
+        </edittype>
+        <edittype widgetv2type="TextEdit" name="Y">
           <widgetv2config IsMultiline="0" fieldEditable="1" UseHtml="0" labelOnTop="0"/>
         </edittype>
       </edittypes>
@@ -940,6 +962,12 @@
           <widgetv2config IsMultiline="0" fieldEditable="1" UseHtml="0" labelOnTop="0"/>
         </edittype>
         <edittype widgetv2type="TextEdit" name="PNTCNT">
+          <widgetv2config IsMultiline="0" fieldEditable="1" UseHtml="0" labelOnTop="0"/>
+        </edittype>
+        <edittype widgetv2type="TextEdit" name="X">
+          <widgetv2config IsMultiline="0" fieldEditable="1" UseHtml="0" labelOnTop="0"/>
+        </edittype>
+        <edittype widgetv2type="TextEdit" name="Y">
           <widgetv2config IsMultiline="0" fieldEditable="1" UseHtml="0" labelOnTop="0"/>
         </edittype>
       </edittypes>
@@ -4880,6 +4908,56 @@
       </pipe>
       <blendMode>0</blendMode>
     </maplayer>
+    <maplayer minimumScale="-4.65661e-10" maximumScale="1e+08" type="raster" hasScaleBasedVisibilityFlag="0">
+      <id>MORA_elev_focal9m20151029093930128</id>
+      <datasource>/Volumes/ib_working/GIS/MORA_elev_focal9m.tif</datasource>
+      <title></title>
+      <abstract></abstract>
+      <keywordList>
+        <value></value>
+      </keywordList>
+      <layername>MORA_elev_focal9m</layername>
+      <srs>
+        <spatialrefsys>
+          <proj4>+proj=utm +zone=10 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs</proj4>
+          <srsid>2287</srsid>
+          <srid>26910</srid>
+          <authid>EPSG:26910</authid>
+          <description>NAD83 / UTM zone 10N</description>
+          <projectionacronym>utm</projectionacronym>
+          <ellipsoidacronym>GRS80</ellipsoidacronym>
+          <geographicflag>false</geographicflag>
+        </spatialrefsys>
+      </srs>
+      <customproperties>
+        <property key="identify/format" value="Value"/>
+      </customproperties>
+      <provider>gdal</provider>
+      <noData>
+        <noDataList bandNo="1" useSrcNoData="1"/>
+      </noData>
+      <map-layer-style-manager current="">
+        <map-layer-style name=""/>
+      </map-layer-style-manager>
+      <pipe>
+        <rasterrenderer gradient="BlackToWhite" opacity="0.509804" alphaBand="0" type="singlebandgray" grayBand="1">
+          <rasterTransparency>
+            <singleValuePixelList>
+              <pixelListEntry min="0" max="493" percentTransparent="100"/>
+            </singleValuePixelList>
+          </rasterTransparency>
+          <contrastEnhancement>
+            <minValue>716.132</minValue>
+            <maxValue>3203.22</maxValue>
+            <algorithm>ClipToMinimumMaximum</algorithm>
+          </contrastEnhancement>
+        </rasterrenderer>
+        <brightnesscontrast brightness="0" contrast="0"/>
+        <huesaturation colorizeGreen="128" colorizeOn="0" colorizeRed="255" colorizeBlue="128" grayscaleMode="0" saturation="0" colorizeStrength="100"/>
+        <rasterresampler maxOversampling="2"/>
+      </pipe>
+      <blendMode>0</blendMode>
+    </maplayer>
     <maplayer minimumScale="0" maximumScale="1e+08" simplifyDrawingHints="1" minLabelScale="0" maxLabelScale="1e+08" simplifyDrawingTol="1" geometry="Polygon" simplifyMaxScale="1" type="vector" hasScaleBasedVisibilityFlag="0" simplifyLocal="1" scaleBasedLabelVisibilityFlag="0">
       <id>MORA_glaciers_200820151020171630293</id>
       <datasource>/Volumes/ib_working/GIS/MORA_glaciers_2008.shp</datasource>
@@ -5343,7 +5421,7 @@
         <rasterrenderer opacity="0.752941" alphaBand="0" classificationMax="250" classificationMinMaxOrigin="User" band="1" classificationMin="0" type="singlebandpseudocolor">
           <rasterTransparency>
             <singleValuePixelList>
-              <pixelListEntry min="0" max="-1151" percentTransparent="100"/>
+              <pixelListEntry min="0" max="-1065" percentTransparent="100"/>
             </singleValuePixelList>
           </rasterTransparency>
           <rastershader>
