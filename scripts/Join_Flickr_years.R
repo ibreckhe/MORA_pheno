@@ -22,7 +22,7 @@ f2011 <- filter(f,year==2011)
 f2011$UniqueID <- paste(f2011$owner,f2011$id,sep=".")
 
 c2011$UniqueID <- paste(c2011$owner,c2011$id,sep=".")
-d2011_cols <- select(c2011,UniqueID,Collector=Collector,Species,Phenophase,Notes)
+d2011_cols <- select(c2011,UniqueID,Collector=Collector,Species,Phenophase,Nonfocal_spp,Notes)
 
 d2011 <- left_join(f2011,d2011_cols,by="UniqueID")
 
@@ -44,15 +44,19 @@ f2012$UniqueID <- paste(f2012$title,f2012$datePOSIX,f2012$lat,f2012$long,sep="."
 
 ##Joins observations to new data.
 c2012_cols <- select(c2012,UniqueID,Collector,Species = Name,Phenophase,Notes)
+c2012_cols$Nonfocal_spp <- NA
 d2012 <- left_join(f2012,c2012_cols,by="UniqueID")
+
 
 ####Munges data for 2013####
 f2013 <- filter(f,year==2013)
 f2013$UniqueID <- paste(f2013$owner,f2013$id,sep=".")
 
 c2013$UniqueID <- paste(c2013$owner,c2013$id,sep=".")
-d2013_cols <- select(c2013,UniqueID,Species=SPECIES,Phenophase=PHEN_PHASE)
-d2013 <- left_join(f2013,d2013_cols,by="UniqueID")
+c2013_cols <- select(c2013,UniqueID,Species=SPECIES,Phenophase=PHEN_PHASE)
+c2013_cols$Nonfocal_spp <- NA
+
+d2013 <- left_join(f2013,c2013_cols,by="UniqueID")
 d2013$Collector <- "Sam"
 d2013$Notes <- NA
 
@@ -61,9 +65,10 @@ f2014 <- filter(f,year==2014)
 f2014$UniqueID <- paste(f2014$owner,f2014$id,sep=".")
 
 c2014$UniqueID <- paste(c2014$owner,c2014$id,sep=".")
-d2014_cols <- select(c2014,UniqueID,Collector=CollectorName,Species,Phenophase,Notes)
+c2014_cols <- select(c2014,UniqueID,Collector=CollectorName,Species,Phenophase,Notes)
+c2014_cols$Nonfocal_spp <- NA
 
-d2014 <- left_join(f2014,d2014_cols,by="UniqueID")
+d2014 <- left_join(f2014,c2014_cols,by="UniqueID")
 
 ####Merges data from different years.####
 d_classed <- rbind(d2011,d2012,d2013,d2014)
@@ -75,8 +80,37 @@ d_classed$Species <- as.factor(tolower(d_classed$Species))
 ###Corrects some misspelled species names.
 d_classed$Species[d_classed$Species=="eucephalus ledophyllus"] <- "aster ledophyllus"
 d_classed$Species[d_classed$Species=="potentilla flavbellifolia"] <- "potentilla flabellifolia"
-d_classed$Species[d_classed$Species=="eucephalus ledophyllus"] <- "aster ledophyllus"
 d_classed$Species[d_classed$Species=="nothocalais alpstris"] <- "microseris alpestris"
+d_classed$Species[d_classed$Phenophase=="np"] <- "np"
+
+###Corrects misspelled phenophase names
+d_classed$Phenophase[d_classed$Phenophase=="releasing seeds"] <- "releasing seed"
+d_classed$Phenophase[d_classed$Phenophase=="vegetation"] <- "nf"
+d_classed$Phenophase[d_classed$Phenophase=="budding "] <- "budding"
+d_classed$Phenophase[d_classed$Phenophase=="cassiope mertensiana"] <- "flowering"
+d_classed$Phenophase[d_classed$Phenophase=="lupinus arcticus"] <- "flowering"
+d_classed$Phenophase[d_classed$Phenophase==""] <- "nf"
+d_classed$Phenophase <- factor(d_classed$Phenophase)
+
+####Creates a dataset for filling in gaps####
+d_filt <- filter(d_classed,is.na(Species))
+d_filt$Species[d_filt$days_since_snow < -20 | d_filt$days_since_snow > 100 ] <- "nf"
+d_filt$Phenophase[d_filt$days_since_snow < -20 | d_filt$days_since_snow > 100 ] <- "nf"
+
+d_nofilt <- filter(d_classed,!is.na(Species))
+d_classed <- rbind(d_filt,d_nofilt)
+
+d_filt2 <- filter(d_classed, is.na(Species))
+d_nofilt2 <- filter(d_classed, !is.na(Species))
+
+##Writes missing and non-missing data to disk
+write.csv(d_filt2,"./data/MORA_flickr_2011_2014_missing.csv",row.names=FALSE)
+write.csv(d_nofilt2,"./data/MORA_flickr_2011_2014_nonmissing.csv")
+
+##Reads in filled gaps and appends to non-missing data.
+c2012_reclass <- as.tbl(read.csv("./data/MORA_flickr_2012_classified_missing.csv"))
+c2012_reclass$datePOSIX <- as.POSIXct(c2012_reclass$datetaken,format="%M/%d/&y")
+d_classed <- rbind(d_nofilt2,c2012_reclass)
 
 focal <- c("lupinus arcticus",
            "polygonum bistortoides",
