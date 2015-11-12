@@ -1,0 +1,35 @@
+
+    model{
+    ## Priors
+    height_slope ~ dnorm(0,1)T(-5,5)
+    opt_int ~ dunif(-20,20)
+    opt_slope ~ dunif(-5,5)
+    width_int ~ dunif(-20,20)
+    width_slope ~ dnorm(0,1)T(-5,5)
+    year_sd ~ dgamma(1,0.1)
+    year_tau <- pow(year_sd,-2)
+    site_height_sd ~ dgamma(1,0.1)
+    site_height_tau <- pow(site_height_sd,-2)
+    err_sd ~ dunif((sd_obs - 0.1),(sd_obs + 0.1))
+    tau_obs <- 1 / (err_sd * err_sd)
+    r ~ dgamma(1,0.1)
+    
+    ## Likelihood
+    for (j in 1:nyr){
+     height_yr[j] ~ dnorm(0,year_tau)
+    }
+    for (k in 1:nsites){
+     height_site[k] ~ dnorm(0,site_height_tau)
+    }
+    for (i in 1:n){
+      x2true[i] ~ dnorm(0,pop_taux)
+      x2[i] ~ dnorm(x2true[i],tau_obs)
+      height[i] <- height_slope * x2true[i] + height_yr[year[i]] + height_site[site[i]]
+      opt[i] <- opt_int + opt_slope * x2true[i]
+      width[i] <- exp(width_int + width_slope * x2true[i]) * -1
+      log(mu[i]) <- width[i] * (x1[i] - opt[i])^2 + height[i] 
+      p[i] <- r/(r+mu[i])
+      y[i] ~ dnegbin(p[i],r)
+    }
+    }
+    

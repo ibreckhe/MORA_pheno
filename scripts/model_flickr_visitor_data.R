@@ -7,7 +7,7 @@ library(ggplot2)
 library(mgcv)
 library(dplyr)
 
-####Loads and munges data data####
+####Loads and munges data####
 d_f <- read.csv("./data/MORA_flickr_metadata_all_2009_2015_cleaned.csv")
 
 ##Calculates the number of unique users per week for every year.##
@@ -110,20 +110,27 @@ dss_fit_max <- d_dss_preds %>%
 dss_fit_snow <- left_join(dss_fit_max,d_snow,by=c("year","nearest_center"))[,1:4]
 dss_fit_snow <- left_join(dss_fit_snow,d_sum_year,by=c("year","nearest_center"))
 
-dss_fit_snow$melt_day <- dss_fit_snow$week * 7
-dss_fit_snow$peak_day <- dss_fit_snow$melt_day + dss_fit_snow$max_dss
-
 ##Tries to fit all years simultaneously
 weeks_snowmelt <- left_join(d_data_week[,1:5],d_snow[,1:3],by=c("year","nearest_center"))
 colnames(weeks_snowmelt) <- c("week","year","nearest_center","nphotos","nusers","melt_week")
 
-mod_week_all <- gam(nusers~s(week,melt_week,bs="tp",k=12)+
-                           s(week,nearest_center,bs="fs",k=20),
+##Estimates day of year for each week and melt week.
+weeks_snowmelt$DOY <- NA
+weeks_snowmelt$DOY[weeks_snowmelt$year==2012] <- (weeks_snowmelt$week[weeks_snowmelt$year==2012] / (366/7)) * 366 - 3.5
+weeks_snowmelt$DOY[weeks_snowmelt$year!=2012] <- (weeks_snowmelt$week[weeks_snowmelt$year!=2012] / (365/7)) * 365 - 3.5
+
+weeks_snowmelt$melt_DOY <- NA
+weeks_snowmelt$melt_DOY[weeks_snowmelt$year==2012] <- (weeks_snowmelt$melt_week[weeks_snowmelt$year==2012] / (366/7)) * 366 - 3.5
+weeks_snowmelt$melt_DOY[weeks_snowmelt$year!=2012] <- (weeks_snowmelt$melt_week[weeks_snowmelt$year!=2012] / (365/7)) * 365 - 3.5
+
+
+mod_week_all <- gam(nusers~s(DOY,melt_DOY,bs="tp",k=12)+
+                           s(DOY,nearest_center,bs="fs",k=20),
                     family=nb(),optimizer="perf",data = weeks_snowmelt )
 summary(mod_week_all)
 plot(mod_week_all,pages=1,residuals=TRUE)
 
-gam_pred_data <- expand.grid(week=seq(1,53,by=0.1),melt_week=seq(10,35,by=0.1),
+gam_pred_data <- expand.grid(DOY=seq(1,365,by=1),melt_DOY=seq(90,240,by=1),
                              nearest_center=c("Mowich","Paradise","Sunrise","Tipsoo"))
 gam_pred_data$Users <- predict(mod_week_all,newdata=gam_pred_data,type="response")
 gam_pred_data$SE <- predict(mod_week_all,newdata=gam_pred_data,type="response",se.fit=TRUE)$se.fit
@@ -167,55 +174,55 @@ gam_width <- function(week,pred,threshold=0.1586553){
 }
 
 ##Computes optimum and width across the model fit.
-gam_pred_grp <- group_by(gam_pred_data,melt_week,nearest_center)
-gam_pred_max <- summarise(gam_pred_grp,weekmax=week[which.max(Users)],
-                                       weekstart=gam_width(week,Users,threshold=0.25)[1],
-                                       weekend=gam_width(week,Users,threshold=0.25)[2])
+gam_pred_grp <- group_by(gam_pred_data,melt_DOY,nearest_center)
+gam_pred_max <- summarise(gam_pred_grp,weekmax=DOY[which.max(Users)],
+                                       weekstart=gam_width(DOY,Users,threshold=0.25)[1],
+                                       weekend=gam_width(DOY,Users,threshold=0.25)[2])
 
 ##Adds flowering window
-flwr_start <- 23/7
-flwr_end <- 49/7
-flwr_max <- 36/7
+flwr_start <- 23
+flwr_end <- 49
+flwr_max <- 36
 
-gam_pred_max$flwrstart <- gam_pred_max$melt_week + flwr_start
-gam_pred_max$flwrend <- gam_pred_max$melt_week + flwr_end
-gam_pred_max$flwrmax <- gam_pred_max$melt_week + flwr_max
+gam_pred_max$flwrstart <- gam_pred_max$melt_DOY + flwr_start
+gam_pred_max$flwrend <- gam_pred_max$melt_DOY + flwr_end
+gam_pred_max$flwrmax <- gam_pred_max$melt_DOY + flwr_max
 
 
 pdf("./figs/Flickr_gam_2d_fits.pdf",width=5,height=4)
 ggplot(gam_pred_data)+
-  geom_raster(aes(y=week,x=melt_week,fill=Users),alpha=1)+
+  geom_raster(aes(y=DOY,x=melt_DOY,fill=Users),alpha=1)+
   scale_fill_gradientn(colours = rev(rainbow(8,start=0,end=0.6)))+
   geom_abline(slope=1,intercept=0)+
-  #geom_point(aes(y=week,x=melt_week,size=nphotos),
+  #geom_point(aes(y=DOY,x=melt_DOY,size=nphotos),
   #           data=subset(weeks_snowmelt,nusers>0),alpha=0.1)+
   scale_shape(solid = FALSE)+
-  geom_line(aes(x=melt_week,y=weekmax),size=0.5,linetype=3,data=gam_pred_max)+
-  geom_line(aes(x=melt_week,y=weekstart),size=0.5,linetype=2,data=gam_pred_max)+
-  geom_line(aes(x=melt_week,y=weekend),size=0.5,linetype=2,data=gam_pred_max)+
-  geom_line(aes(x=melt_week,y=flwrmax),color="white",size=0.5,linetype=3,data=gam_pred_max)+
-  geom_line(aes(x=melt_week,y=flwrstart),color="white",size=0.5,linetype=2,data=gam_pred_max)+
-  geom_line(aes(x=melt_week,y=flwrend),color="white",size=0.5,linetype=2,data=gam_pred_max)+
+  geom_line(aes(x=melt_DOY,y=weekmax),size=0.5,linetype=3,data=gam_pred_max)+
+  geom_line(aes(x=melt_DOY,y=weekstart),size=0.5,linetype=2,data=gam_pred_max)+
+  geom_line(aes(x=melt_DOY,y=weekend),size=0.5,linetype=2,data=gam_pred_max)+
+  geom_line(aes(x=melt_DOY,y=flwrmax),color="white",size=0.5,linetype=3,data=gam_pred_max)+
+  geom_line(aes(x=melt_DOY,y=flwrstart),color="white",size=0.5,linetype=2,data=gam_pred_max)+
+  geom_line(aes(x=melt_DOY,y=flwrend),color="white",size=0.5,linetype=2,data=gam_pred_max)+
   scale_x_continuous(expand=c(0,0))+
   scale_y_continuous(expand=c(0,0))+
   facet_wrap(facets=~nearest_center)+
   coord_cartesian()+
-  xlab("Week of Snow Melt")+
-  ylab("Week of Year")+
+  xlab("Day of Snow Melt")+
+  ylab("Day of Year")+
   theme_bw()
 dev.off()
 
 pdf("./figs/Flickr_gam_2d_se.pdf",width=5,height=4)
 ggplot(gam_pred_data)+
-  geom_raster(aes(y=week,x=melt_week,fill=SE),alpha=1)+
+  geom_raster(aes(y=DOY,x=melt_DOY,fill=SE),alpha=1)+
   scale_fill_gradientn(colours = rev(rainbow(8,start=0,end=0.6)))+
   geom_abline(slope=1,intercept=0)+
-  #  geom_point(aes(y=week,x=melt_week,size=nusers),
+  #  geom_point(aes(y=DOY,x=melt_DOY,size=nusers),
   #             data=subset(weeks_snowmelt,nusers>0),alpha=0.1)+
   #  scale_shape(solid = FALSE)+
-  geom_line(aes(x=melt_week,y=weekmax),size=0.5,linetype=3,data=gam_pred_max)+
-  geom_line(aes(x=melt_week,y=weekstart),size=0.5,linetype=2,data=gam_pred_max)+
-  geom_line(aes(x=melt_week,y=weekend),size=0.5,linetype=2,data=gam_pred_max)+
+  geom_line(aes(x=melt_DOY,y=weekmax),size=0.5,linetype=3,data=gam_pred_max)+
+  geom_line(aes(x=melt_DOY,y=weekstart),size=0.5,linetype=2,data=gam_pred_max)+
+  geom_line(aes(x=melt_DOY,y=weekend),size=0.5,linetype=2,data=gam_pred_max)+
   scale_x_continuous(expand=c(0,0))+
   scale_y_continuous(expand=c(0,0))+
   facet_wrap(facets=~nearest_center)+
@@ -316,4 +323,118 @@ ggplot(data=dss_fit_snow) +
   xlim(c(105,315))+
   theme_bw()
 
+####Models a parametric approach using JAGS ####
+library(rjags)
 
+##Preps data.
+
+##Sample of data for model development.
+sample_ind <- runif(length(weeks_snowmelt$nusers),0,1)
+weeks_samp <- weeks_snowmelt[sample_ind <= 1,]
+
+obsy <- weeks_samp$nusers
+x1 <- as.numeric(scale(weeks_samp$DOY/100,scale=FALSE))
+x1scale <- attributes(scale(weeks_samp$DOY/100,scale=FALSE))$`scaled:center`
+obsx2 <- as.numeric(scale(weeks_samp$melt_DOY/100,scale=FALSE))
+x2scale <- attributes(scale(weeks_samp$DOY/100,scale=FALSE))$`scaled:center`
+sdobs <- 0.04
+pop_taux2 <- 1/(sd(obsx2)^2)
+year <- as.numeric(as.factor(weeks_samp$year))
+site <- as.numeric(weeks_samp$nearest_center)
+n <- length(obsy)
+nyears <- length(unique(year))
+nsites <- length(unique(site))
+
+# write model
+cat("
+    model{
+    ## Priors
+    height_slope ~ dnorm(0,1)T(-5,5)
+    opt_int ~ dunif(-20,20)
+    opt_slope ~ dunif(-5,5)
+    width_int ~ dunif(-20,20)
+    width_slope ~ dnorm(0,1)T(-5,5)
+    year_sd ~ dgamma(1,0.1)
+    year_tau <- pow(year_sd,-2)
+    site_height_sd ~ dgamma(1,0.1)
+    site_height_tau <- pow(site_height_sd,-2)
+    err_sd ~ dunif((sd_obs - 0.1),(sd_obs + 0.1))
+    tau_obs <- 1 / (err_sd * err_sd)
+    r ~ dgamma(1,0.1)
+    
+    ## Likelihood
+    for (j in 1:nyr){
+     height_yr[j] ~ dnorm(0,year_tau)
+    }
+    for (k in 1:nsites){
+     height_site[k] ~ dnorm(0,site_height_tau)
+    }
+    for (i in 1:n){
+      x2true[i] ~ dnorm(0,pop_taux)
+      x2[i] ~ dnorm(x2true[i],tau_obs)
+      height[i] <- height_slope * x2true[i] + height_yr[year[i]] + height_site[site[i]]
+      opt[i] <- opt_int + opt_slope * x2true[i]
+      width[i] <- exp(width_int + width_slope * x2true[i]) * -1
+      log(mu[i]) <- width[i] * (x1[i] - opt[i])^2 + height[i] 
+      p[i] <- r/(r+mu[i])
+      y[i] ~ dnegbin(p[i],r)
+    }
+    }
+    ",
+    fill=TRUE, file="./scratch/xyerror_nb.txt")
+
+# bundle data
+jags_d <- list(x1 = x1, x2 = obsx2, y = obsy, sd_obs = sdobs, 
+               pop_taux = pop_taux2,year = year,site=site,
+               nyr=nyears,nsites=nsites, n = n)
+
+# initiate model
+mod2 <- jags.model("./scratch/xyerror_nb.txt", data=jags_d,
+                   n.chains=3, n.adapt=1000)
+update(mod2, n.iter=10000)
+
+# simulate posterior
+out2 <- coda.samples(mod2, n.iter=10000, thin=10,
+                     variable.names=c("height_slope","height_yr",
+                                      "opt_int","opt_slope","opt_slope_site", 
+                                      "width_int","width_slope", "height_site",
+                                      "year_sd","site_height_sd"))
+gelman.diag(out2)
+save(out2,file="./scratch/visitors_jags_output_2011_2014.Rdata",compress=TRUE)
+
+
+####Visualizes the JAGS fit ####
+jags_pred_data <- expand.grid(DOY=seq(1,365,length.out=100),
+                              melt_DOY=seq(120,220,length.out=100))
+
+jags_fit_fun <- function(height_int,height_slope,
+                         opt_int,opt_slope,
+                         width_int,width_slope,
+                         x1vec,x2vec){
+  #Checks inputs.
+  stopifnot(length(x1vec)==length(x2vec))
+  
+  #Calculates the value of the response.
+  height <- height_int + height_slope * x2vec
+  opt <- opt_int + opt_slope * x2vec
+  width<- exp(width_int + width_slope * x2vec) * -1
+  mu <- exp(width * (x1vec - opt)^2 + height)
+  return(mu)
+}
+
+jags_meds <- summary(out2)$quantiles[,3]
+jags_pred_data$predmu <- jags_fit_fun(height_int=jags_meds["height_int"],
+                                     height_slope=jags_meds["height_slope"],
+                                     width_int=jags_meds["width_int"],
+                                     width_slope=jags_meds["width_slope"],
+                                     opt_int=jags_meds["opt_int"],
+                                     opt_slope=jags_meds["opt_slope"],
+                                     x1vec=jags_pred_data$DOY/100-x1scale,
+                                     x2vec=jags_pred_data$melt_DOY/100-x2scale)
+ggplot(jags_pred_data)+
+  geom_raster(aes(y=DOY,x=melt_DOY,fill=predmu),alpha=1)+
+  scale_fill_gradientn(colours = rev(rainbow(8,start=0,end=0.6)))+
+  geom_abline(slope=1,intercept=0)+
+  geom_point(aes(y=DOY,x=melt_DOY,size=nusers),
+             data=subset(weeks_snowmelt,nusers>0),alpha=0.1)+
+  theme_bw()

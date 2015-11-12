@@ -1,0 +1,33 @@
+
+    model {
+    ## Priors
+    height_int ~ dunif(-20,20)
+    height_slope ~ dunif(-5,5)
+    opt_int ~ dunif(-20,20)
+    opt_slope ~ dunif(-5,5)
+    width_int ~ dunif(-50,20)
+    width_slope ~ dnorm(0,0.1)T(-10,10)
+    group_sd ~ dunif(0,20)
+    group_tau <- pow(group_sd,-2)
+    err_sd ~ dunif((sd_obs - 0.1),(sd_obs + 0.1))
+    tau_obs <- 1 / (err_sd * err_sd)
+    r ~ dunif(0,50)
+    
+    ## Random effects priors
+    for (j in 1:ngroups){
+      height.g[j] ~ dnorm(0,group_tau)
+    }
+
+    ## Likelihood
+    for (i in 1:n){
+      x2true[i] ~ dnorm(0,pop_taux)
+      x2[i] ~ dnorm(x2true[i],tau_obs)
+      height[i] <- height_int + height_slope * x2true[i] + height.g[group[i]] 
+      opt[i] <- opt_int + opt_slope * x2true[i]
+      width[i] <- exp(width_int + width_slope * x2true[i]) * -1
+      log(mu[i]) <- width[i] * (x1[i] - opt[i])^2 + height[i] 
+      p[i] <- r/(r+mu[i])
+      y[i] ~ dnegbin(p[i],r)
+    }
+    }
+    

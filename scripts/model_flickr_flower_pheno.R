@@ -1,4 +1,6 @@
-##Script to model plant phenology in Flickr data using generalized aditive models.
+##Script to model plant phenology in Flickr data##
+##Ian Breckheimer
+##10 November 2015
 
 ####Sets up workspace####
 library(dplyr)
@@ -20,23 +22,27 @@ small_locs <- nphotos$locfact[which(nphotos$nphotos < 20)]
 f_all <- filter(f_all,Phenophase!="np" &
                       Species != "other" &
                       days_since_snow > -100 &
+#                      sdd_pred > 150 &
+#                     sdd_pred < 210 &
 #                      year != 2012 &
 #                      year != 2014 &
                       locfact %in% small_locs)
 
 f_grp <- group_by(f_all,id,owner,year,datetaken_DOY,
-                  nearest_center,days_since_snow,
-                  sdd_pred,X_UTM,Y_UTM)
+                  nearest_center,days_since_snow, relev_30m,
+                  canopy_pct,srad_noc,sdd_pred,X_UTM,Y_UTM)
 f_flwr <- summarise(f_grp,FlwrYN = any(Phenophase=="flowering"))
 f_flwr$Flwr <- as.numeric(f_flwr$FlwrYN)
+f_flwr$yearfact <- as.factor(f_flwr$year)
 
 
 ####Plots data.####
-ggplot(f_flwr)+
-  geom_point(aes(x=days_since_snow,y=Flwr),
-             position=position_jitter(height=0.2),size=0.1)+
-  geom_smooth(aes(x=days_since_snow,y=Flwr),method="glm",formula=y~poly(x,2),se=TRUE,
+ggplot(f_flwr,groups=yearfact)+
+  geom_point(aes(x=days_since_snow,y=Flwr,color=nearest_center),
+             position=position_jitter(height=0.1),size=0.1)+
+  geom_smooth(aes(x=days_since_snow,y=Flwr,color=nearest_center),method="glm",formula=y~poly(x,2),se=TRUE,
               method.args=list(family="binomial"))+
+  facet_wrap(facets=~nearest_center)+
   theme_bw()
 
 ####Generalized additive model####
@@ -45,7 +51,8 @@ gam2011 <-  gam(Flwr~s(sdd_pred,datetaken_DOY,bs="tp",k=8)+nearest_center,
 summary(gam2011)
 plot(gam2011,pages=1,residuals=TRUE)
 
-gam_all<-  gam(Flwr~s(sdd_pred,datetaken_DOY,bs="tp",k=8)+year+nearest_center*datetaken_DOY,
+gam_all<-  gam(Flwr~s(sdd_pred,datetaken_DOY,bs="tp",k=7)+yearfact+
+                 nearest_center*datetaken_DOY,
                 family=binomial("logit"), data = f_flwr)
 summary(gam_all)
 plot(gam_all,pages=1,residuals=TRUE)
@@ -53,7 +60,7 @@ plot(gam_all,pages=1,residuals=TRUE)
 
 ####Plots GAM Predictions####
 gam_pred_data <- expand.grid(sdd_pred=seq(110,230,by=1),datetaken_DOY=seq(100,350,by=1),
-                             nearest_center=c("Mowich","Paradise","Sunrise","Tipsoo"),year=2014)
+                             nearest_center=c("Mowich","Paradise","Sunrise","Tipsoo"),yearfact=2014)
 gam_pred_data$pFlwr <- predict(gam_all,newdata=gam_pred_data,type="response")
 gam_pred_data$SE <- predict(gam_all,newdata=gam_pred_data,type="response",se.fit=TRUE)$se.fit
 
@@ -155,6 +162,8 @@ sdobs <- 0.04
 pop_taux2 <- 1/(sd(obsx2)^2)
 groups <- as.numeric(factor(f_samp$owner))
 ngroups <- length(unique(groups))
+sites <- as.numeric(factor(f_samp$nearest_center))
+nsites <- length(unique(sites))
 
 # simple plot of data..
 obsy_t <- obsy[obsy==1]
@@ -165,8 +174,8 @@ x1_n <- x1[obsy==0]
 obsx2_n <- obsx2[obsy==0]
 
 par(mfrow=c(1,1))
-plot(obsx2_n,x1_n,col="grey80")
-points(obsx2_t,x1_t,col="red")
+plot(obsx2_n,x1_n,col="grey80",pch=20,cex=0.2)
+points(obsx2_t,x1_t,col="red",pch=20,cex=0.3)
 
 ## specify model
 cat("
@@ -182,18 +191,24 @@ cat("
     group_tau <- pow(group_sd,-2)
     err_sd ~ dunif((sd_obs - 0.01),(sd_obs + 0.01))
     tau_obs <- 1 / (err_sd * err_sd)
+#   site_opt_int_sd ~ dgamma(1,0.1)
+#   site_opt_int_tau <- 1 / (site_opt_int_sd * site_opt_int_sd)
     
     ## Random effects priors
     for (j in 1:ngroups){
-    height.g[j] ~ dnorm(0,group_tau)
+    height_grp[j] ~ dnorm(0,group_tau)
     }
+    for (k in 1:nsites){
+     opt_int_site[k] ~ dnorm(0,site_opt_int_tau)
+    }
+
     
     ## Likelihood
     for (i in 1:n){
       x2true[i] ~ dnorm(0,pop_taux)
       x2[i] ~ dnorm(x2true[i],tau_obs)
-      height[i] <- height_int + height_slope * x2true[i] + height.g[group[i]] 
-      opt[i] <- opt_int + opt_slope * x2true[i]
+      height[i] <- height_int + height_slope * x2true[i] + height_grp[group[i]] 
+      opt[i] <- opt_int + opt_slope * x2true[i] + opt_int_site[site[i]]
       width[i] <- exp(width_int + width_slope * x2true[i]) * -1
       logit(alpha[i]) <- width[i] * (x1[i] - opt[i])^2 + height[i] 
       y[i] ~ dbern(alpha[i])
@@ -203,7 +218,7 @@ cat("
 
 # bundle data
 jags_d <- list(x1 = x1, x2 = obsx2, y = obsy, sd_obs = sdobs, 
-               pop_taux = pop_taux2,group = groups,
+               pop_taux = pop_taux2,group = groups, site = sites,
                ngroups = ngroups, n = length(x1))
 
 # initiate model
@@ -214,8 +229,8 @@ update(mod2, n.iter=10000)
 # simulate posterior
 out2 <- coda.samples(mod2, n.iter=10000, thin=10,
                      variable.names=c("height_int","height_slope", 
-                                      "opt_int","opt_slope", 
+                                      "opt_int","opt_slope", "opt_int_site",
                                       "width_int","width_slope",
-                                      "height.g[1]","group_sd"))
+                                      "site_opt_int_sd","group_sd"))
 gelman.diag(out2)
 save(out2,file="./scratch/jags_output_2011_2014.Rdata",compress=TRUE)

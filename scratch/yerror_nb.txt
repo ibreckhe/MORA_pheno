@@ -1,0 +1,27 @@
+
+    model{
+    ## Priors
+    height_int ~ dunif(-20,20)
+    height_slope ~ dunif(-5,5)
+    opt_int ~ dunif(-20,20)
+    opt_slope ~ dunif(-5,5)
+    width_int ~ dunif(-20,20)
+    width_slope ~ dnorm(0,0.1)T(-5,5)
+    group_sd ~ dunif(0,20)
+    group_tau <- pow(group_sd,-2)
+    r ~ dunif(0,50)
+
+    ## Likelihood
+    for (j in 1:ngroups){
+      height.g[j] ~ dnorm(0,group_tau)
+    }
+    for (i in 1:n){
+      height[i] <- height_int + height_slope * x2[i] + height.g[group[i]] 
+      opt[i] <- opt_int + opt_slope * x2[i]
+      width[i] <- exp(width_int + width_slope * x2[i]) * -1
+      log(mu[i]) <- width[i] * (x1[i] - opt[i])^2 + height[i] 
+      p[i] <- r/(r+mu[i])
+      y[i] ~ dnegbin(p[i],r)
+    }
+    }
+    

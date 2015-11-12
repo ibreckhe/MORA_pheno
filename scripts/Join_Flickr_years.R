@@ -112,6 +112,15 @@ c2012_reclass <- as.tbl(read.csv("./data/MORA_flickr_2012_classified_missing.csv
 c2012_reclass$datePOSIX <- as.POSIXct(c2012_reclass$datetaken,format="%M/%d/&y")
 d_classed <- rbind(d_nofilt2,c2012_reclass)
 
+c2013_reclass <- as.tbl(read.csv("./data/MORA_flickr_2013_classified_missing.csv"))
+c2013_reclass$datePOSIX <- as.POSIXct(c2013_reclass$datetaken,format="%M/%d/&y")
+d_classed <- rbind(d_classed,c2013_reclass)
+
+c2014_reclass <- as.tbl(read.csv("./data/MORA_flickr_2014_classified_missing.csv"))
+c2014_reclass$datePOSIX <- as.POSIXct(c2014_reclass$datetaken,format="%M/%d/&y")
+d_classed <- rbind(d_classed,c2014_reclass)
+
+
 focal <- c("lupinus arcticus",
            "polygonum bistortoides",
            "castilleja parviflora",

@@ -11,18 +11,30 @@
     group_tau <- pow(group_sd,-2)
     err_sd ~ dunif((sd_obs - 0.01),(sd_obs + 0.01))
     tau_obs <- 1 / (err_sd * err_sd)
+#   site_opt_int_sd ~ dgamma(1,0.1)
+#   site_opt_int_tau <- 1 / (site_opt_int_sd * site_opt_int_sd)
     
     ## Random effects priors
     for (j in 1:ngroups){
-    height.g[j] ~ dnorm(0,group_tau)
+    height_grp[j] ~ dnorm(0,group_tau)
     }
+    #for (k in 1:nsites){
+    # opt_int_site[k] ~ dnorm(0,site_opt_int_tau)
+    #}
+
+    ## Fixed effect priors
+    opt_int_site[1] ~ dnorm(0,0.001)
+    opt_int_site[2] ~ dnorm(0,0.001)
+    opt_int_site[3] ~ dnorm(0,0.001)
+    opt_int_site[4] ~ dnorm(0,0.001)
+
     
     ## Likelihood
     for (i in 1:n){
       x2true[i] ~ dnorm(0,pop_taux)
       x2[i] ~ dnorm(x2true[i],tau_obs)
-      height[i] <- height_int + height_slope * x2true[i] + height.g[group[i]] 
-      opt[i] <- opt_int + opt_slope * x2true[i]
+      height[i] <- height_int + height_slope * x2true[i] + height_grp[group[i]] 
+      opt[i] <- opt_int + opt_slope * x2true[i] + opt_int_site[site[i]]
       width[i] <- exp(width_int + width_slope * x2true[i]) * -1
       logit(alpha[i]) <- width[i] * (x1[i] - opt[i])^2 + height[i] 
       y[i] ~ dbern(alpha[i])
