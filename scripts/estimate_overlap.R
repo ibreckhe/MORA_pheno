@@ -4,7 +4,11 @@
 
 ####Sets up workspace####
 library(dplyr)
+library(rjags)
 library(ggmcmc)
+library(doParallel)
+library(foreach)
+source("./scripts/overlap_functions.R")
 
 ##Brings in fit model objects and converts them to data frames.
 load("./scratch/visitors_jags_output_2011_2014.Rdata")
@@ -12,127 +16,130 @@ visit_model <- out2
 load("./scratch/jags_output_2011_2014.Rdata")
 flower_model <- out2
 
-##Converts them to data frames
-visit_samples <- filter(ggs(visit_model),Parameter %in% c("height_int","height_slope",
-                                         "opt_int","opt_slope",
-                                         "width_int","width_slope"))
-visit_samples$Parameter <- factor(visit_samples$Parameter)
-visit_params <- tidyr::spread(visit_samples,Parameter,value)
-visit_means <- colMeans(visit_params)[3:8]
+##Processes model output to measure phenological mismatch for each site.
 
-flower_samples <- filter(ggs(flower_model),Parameter %in% c("height_int","height_slope",
-                                                          "opt_int","opt_slope",
-                                                          "width_int","width_slope"))
-flower_samples$Parameter <- factor(flower_samples$Parameter)
-flower_params <- tidyr::spread(flower_samples,Parameter,value)
-flower_means <- colMeans(flower_params)[3:8]
+##Names and days for measurement
+site_names <- c("Mowich","Paradise","Sunrise","Chinook Pass")
+measure_sdd <- seq(100,260,by=20)
 
-params <- cbind(visit_params[3:8],flower_params[,3:8])
-
-####Workhorse Functions ####
-inv.logit <- function(x){exp(x)/(1+exp(x))}
-
-##Functional forms of the fit relationships for flowers and visitors
-f1 <- function(x1,x2,height_int,height_slope,
-                       opt_int,opt_slope,
-                       width_int,width_slope) {
-  exp(exp(width_int + width_slope * x2) * -1 * 
-  (x1 -(opt_int + opt_slope * x2))^2 + (height_int + height_slope * x2))
-  }
-f2 <- function(x1,x2,height_int2,height_slope2,
-                       opt_int2,opt_slope2,
-                       width_int2,width_slope2) {
-               inv.logit(exp(width_int2 + width_slope2 * x2) * -1 * 
-               (x1 -(opt_int2 + opt_slope2 * x2))^2 + (height_int2 + height_slope2 * x2))
+##Function that does the heavy-lifting.
+jags_mismatch <- function(visit_model,flower_model,group_index,measure_sdd,
+                          site_names){
+  params <- prep_mcmc_vars(visit_model,flower_model,group_index=group_index,
+                           mod1_param_names = c("height_int_site","height_slope",
+                                                "opt_int","opt_slope",
+                                                "width_int","width_slope"),
+                           mod2_param_names = c("height_int","height_slope",
+                                                "opt_int_site","opt_slope",
+                                                "width_int","width_slope"))
+  mismatch <- measure_mismatch(params=params,x2sdd=measure_sdd)
+  mismatch$Site <- site_names[i]
+  return(mismatch)
 }
 
-##Density functions
-f1_dens <- function(x1,x2,height_int,height_slope,
-                            opt_int,opt_slope,
-                            width_int,width_slope) { 
-  y <- f1(x1,x2,height_int,height_slope,
-                opt_int,opt_slope,
-                width_int,width_slope)
-  yi <- integrate(f1, -Inf, +Inf, x2,height_int=height_int,height_slope=height_slope,
-                                  opt_int=opt_int, opt_slope=opt_slope,
-                                  width_int=width_int,width_slope=width_slope)
-                                       
-                                      
-  return(y/yi[[1]])
+##Registers a parallel backend.
+cl <- makePSOCKcluster(4)
+registerDoParallel(cl)
+
+##Runs the computation in parallel.
+mismatch <- foreach(i=1:length(site_names),.combine='rbind') %dopar% {
+                  jags_mismatch(visit_model,flower_model,group_index=i,measure_sdd=measure_sdd,
+                                site_names=site_names)
 }
+stopCluster(cl)
+
+##Graphs the results.
+month_breaks <- c(121,152,182,213,244)
+month_labels <- c("May","June","July","Aug","Sept")
+
+#pdf("./figs/overlap_sdd_paradise_2015.pdf",width=4,height=4)
+ggplot(data=mismatch)+
+  geom_ribbon(aes(x=SDD,ymax=overlap_upr,ymin=overlap_lwr),fill="grey20",alpha=0.2)+
+#  geom_ribbon(aes(x=SDD,ymax=overlap_q10,ymin=overlap_q90),fill="grey20",alpha=0.4)+
+  geom_ribbon(aes(x=SDD,ymax=overlap_q25,ymin=overlap_q75),fill="grey20",alpha=0.6)+
+  geom_line(aes(x=SDD,y=overlap_q50))+
+  scale_x_continuous(breaks = month_breaks,labels = month_labels )+
+  xlab("Last Snow Melt")+
+  ylab("Phenological Match")+
+  facet_wrap(facets=~Site)+
+  ylim(c(0,1))+
+  theme_bw()
+#dev.off()
+
+##Graphs functions and overlap at 2011 and 2015 Snow Disappearance Dates
+paramelt2015 <- 139
+paramelt2011 <- 211
+xseq <- seq(1,365,by=1) / 100 - 2
+x2_2015 <- paramelt2015 / 100 - 2
+x2_2011 <- paramelt2011 / 100 - 2
+
+params <- prep_mcmc_vars(visit_model,flower_model,group_index=2,
+                         mod1_param_names = c("height_int_site","height_slope",
+                                              "opt_int","opt_slope",
+                                              "width_int","width_slope"),
+                         mod2_param_names = c("height_int","height_slope",
+                                              "opt_int_site","opt_slope",
+                                              "width_int","width_slope"))
+visit_params <- params[,1:6]
+flower_params <- params[,7:12]
+
+visit_fun_2011 <- function(x) { f1_dens(x1=xseq, x2=x2_2011, 
+                              height_int=x[1],height_slope=x[2],
+                              opt_int=x[3],opt_slope=x[4],
+                              width_int=x[5],width_slope=x[6])}
+visits_2011 <- apply(visit_params, FUN=visit_fun_2011,MARGIN = 1)
+
+visit_fun_2015 <- function(x) { f1_dens(x1=xseq, x2=x2_2015, 
+                                   height_int=x[1],height_slope=x[2],
+                                   opt_int=x[3],opt_slope=x[4],
+                                   width_int=x[5],width_slope=x[6])}
+visits_2015 <- apply(visit_params, FUN=visit_fun_2015,MARGIN = 1)
+
+flower_fun_2011 <- function(x) { f2_dens(x1=xseq, x2=x2_2011, 
+                                   height_int=x[1],height_slope=x[2],
+                                   opt_int=x[3],opt_slope=x[4],
+                                   width_int=x[5],width_slope=x[6])}
+flowers_2011 <- apply(flower_params, FUN=flower_fun_2011,MARGIN = 1)
+
+flower_fun_2015 <- function(x) { f2_dens(x1=xseq, x2=x2_2015, 
+                                   height_int=x[1],height_slope=x[2],
+                                   opt_int=x[3],opt_slope=x[4],
+                                   width_int=x[5],width_slope=x[6])}
+flowers_2015 <- apply(flower_params, FUN=flower_fun_2015,MARGIN = 1)
+
+visits_quant_2011 <- data.frame(t(apply(visits_2011,MARGIN = 1,
+                           FUN=function(x){quantile(x,probs=c(0.025,0.25,0.5,0.75,0.975))})))
+visits_quant_2011$group <- "Visitors"
+visits_quant_2011$Year <- 2011
 
 
-f2_dens <- function(x1,x2,height_int2,height_slope2,
-                            opt_int2,opt_slope2,
-                            width_int2,width_slope2) { 
-  y <- f2(x1,x2,height_int2,height_slope2,
-                opt_int2,opt_slope2,
-                width_int2,width_slope2)
-  yi <- integrate(f2, -Inf, +Inf, x2,height_int2=height_int2,height_slope2=height_slope2,
-                                       opt_int2=opt_int2, opt_slope2=opt_slope2,
-                                       width_int2=width_int2,width_slope2=width_slope2)
-  return(y/yi[[1]])
-}
+visits_quant_2015 <- data.frame(t(apply(visits_2015,MARGIN = 1,
+                           FUN=function(x){quantile(x,probs=c(0.025,0.25,0.5,0.75,0.975))})))
+visits_quant_2015$group <- "Visitors"
+visits_quant_2015$Year <- 2015
 
-##Function to find the minimum of these two functions.
-min_f1f2_dens <- function(x1,x2, height_int,height_slope,
-                                 opt_int,opt_slope,
-                                 width_int, width_slope,
-                                 height_int2,height_slope2,
-                                 opt_int2,opt_slope2,
-                                 width_int2,width_slope2) {
-  f1 <- f1_dens(x1,x2,height_int,height_slope,
-                      opt_int,opt_slope,
-                      width_int,width_slope) 
-  f2 <- f2_dens(x1,x2,height_int2,height_slope2,
-                      opt_int2,opt_slope2,
-                      width_int2,width_slope2)
-  pmin(f1, f2)
-}
+flowers_quant_2011 <- data.frame(t(apply(flowers_2011,MARGIN = 1,
+                           FUN=function(x){quantile(x,probs=c(0.025,0.25,0.5,0.75,0.975))})))
+flowers_quant_2011$group <- "Flowers"
+flowers_quant_2011$Year <- 2011
 
-par(mfrow=c(1,1))
-xtest <- seq(-5,8,by=0.1)
-ytest1 <- f1(xtest,-2,visit_means[1],visit_means[2],
-             visit_means[3],visit_means[4],
-             visit_means[5],visit_means[6])
-ytest2 <- f2(xtest,-2,flower_means[1],flower_means[2],
-             flower_means[3],flower_means[4],
-             flower_means[5],flower_means[6])
-plot(xtest,ytest1,type="l",col="black",ylim=c(0,2))
-points(xtest,ytest2,type="l",col="red")
+flowers_quant_2015 <- data.frame(t(apply(flowers_2015,MARGIN = 1,
+                           FUN=function(x){quantile(x,probs=c(0.025,0.25,0.5,0.75,0.975))})))
+flowers_quant_2015$group <- "Flowers"
+flowers_quant_2015$Year <- 2015
 
+flowers_visitors <- rbind(visits_quant_2015,visits_quant_2011,
+                          flowers_quant_2015,flowers_quant_2011)
+flowers_visitors$DOY <- rep((xseq + 2) * 100,4)
+colnames(flowers_visitors) <- c("lwr","lwr25","median","upr75","upr","group","year","doy")
 
-ytest3 <- f1_dens(xtest,-2,visit_means[1],visit_means[2],
-                  visit_means[3],visit_means[4],
-                  visit_means[5],visit_means[6])
-ytest4 <- f2_dens(xtest,-2,flower_means[1],flower_means[2],
-                  flower_means[3],flower_means[4],
-                  flower_means[5],flower_means[6])
-points(xtest,ytest3,type="l",col="black",lty=2)
-points(xtest,ytest4,type="l",col="red",lty=2)
-
-ytest5 <- min_f1f2_dens(xtest,-2,visit_means[1],visit_means[2],
-                                 visit_means[3],visit_means[4],
-                                 visit_means[5],visit_means[6],
-                                 flower_means[1],flower_means[2],
-                                 flower_means[3],flower_means[4],
-                                 flower_means[5],flower_means[6])
-points(xtest,ytest5,type="l",col="purple")
-
-##Function to calculate overlap coefficients.
-measure_overlap <- function(params,x2val){
-  integrate(min_f1f2_dens, -Inf, Inf, x2=x2val,height_int=params[1],height_slope=params[2],
-                                      opt_int=params[3], opt_slope=params[4],
-                                      width_int=params[5],width_slope=params[6],
-                                      height_int2=params[7],height_slope2=params[8],
-                                      opt_int2=params[9], opt_slope2=params[10],
-                                      width_int2=params[11],width_slope2=params[12])$value
-}
-
-##Calculates overlap for each MCMC sample.
-x2seq <- seq(-2,2,by=0.5)
-overmat <- matrix(NA,nrow=nrow(params),ncol=length(x2seq))
-for (i in 1:length(x2seq)){
-  overmat[,i] <- apply(params,FUN=measure_overlap,MARGIN=1,x2val=x2seq[i])
-}
-
+pdf("./figs/curves_2011_2015_paradise.pdf",width=8,height=4)
+ggplot(data=flowers_visitors)+
+  geom_line(aes(x=doy,y=median,color=group))+
+  geom_ribbon(aes(x=doy,ymin=lwr,ymax=upr,fill=group),alpha=0.2)+
+  facet_wrap(facets=~year)+
+  xlab("Day of Year")+
+  ylab("Density")+
+  xlim(c(0,366))+
+  theme_bw()
+dev.off()

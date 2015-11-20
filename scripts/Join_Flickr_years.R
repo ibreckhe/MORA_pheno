@@ -16,6 +16,7 @@ c2011 <- as.tbl(read.csv("./data/MORA_flickr_subalp_2011_classified_cleaned.csv"
 c2012 <- as.tbl(read.csv("./data/MORA_flickr_classified_2012_PresOnly.csv"))
 c2013 <- as.tbl(read.csv("./data/MORA_flickr_classified_all_2013_covars.csv"))
 c2014 <- as.tbl(read.csv("./data/MORA_flickr_2014_classified_cleaned.csv"))
+c2015 <- as.tbl(read.csv("./data/MORA_flickr_2015_cleaned.csv"))
 
 ####Munges data for 2011####
 f2011 <- filter(f,year==2011)
@@ -70,8 +71,17 @@ c2014_cols$Nonfocal_spp <- NA
 
 d2014 <- left_join(f2014,c2014_cols,by="UniqueID")
 
+####Munges data for 2015 ####
+f2015 <- filter(f,year==2015)
+f2015$UniqueID <- paste(f2015$owner,f2015$id,sep=".")
+
+c2015$UniqueID <- paste(c2015$owner,c2015$id,sep=".")
+c2015_cols <- select(c2015,UniqueID,Collector=CollectorName,Species,Phenophase,Notes,Nonfocal_spp)
+
+d2015 <- left_join(f2015,c2015_cols,by="UniqueID")
+
 ####Merges data from different years.####
-d_classed <- rbind(d2011,d2012,d2013,d2014)
+d_classed <- rbind(d2011,d2012,d2013,d2014,d2015)
 
 ###Converts species names to lowercase
 d_classed$Phenophase <- as.factor(tolower(d_classed$Phenophase))
@@ -145,6 +155,6 @@ d_classed$Species <- as.factor(d_classed$Species)
 d_classed <- distinct(d_classed)
 
 ####Writes output to disk####
-write.csv(d_classed,"./data/MORA_flickr_classified_2011_2014.csv",row.names=FALSE) 
+write.csv(d_classed,"./data/MORA_flickr_classified_2011_2015.csv",row.names=FALSE) 
 
 
