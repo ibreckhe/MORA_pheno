@@ -112,8 +112,8 @@ weeks_snowmelt$DOY[weeks_snowmelt$year==2012] <- (weeks_snowmelt$week[weeks_snow
 weeks_snowmelt$DOY[weeks_snowmelt$year!=2012] <- (weeks_snowmelt$week[weeks_snowmelt$year!=2012] / (365/7)) * 365 - 3.5
 
 ##Removes ski season records because they have a lot of leverage.
-weeks_snowmelt <- filter(weeks_snowmelt,DOY > 90 & DOY < 335 & year > 2010)
-days_snowmelt <- filter(days_snowmelt,DOY > 90 & DOY < 335 & year > 2010)
+weeks_snowmelt <- filter(weeks_snowmelt,DOY > 90 & DOY < 335)
+days_snowmelt <- filter(days_snowmelt,DOY > 90 & DOY < 335)
 
 
 mod_week_all <- gam(nusers~s(DOY,melt_DOY,bs="tp",k=12)+
@@ -128,6 +128,7 @@ mod_day_all <- gam(nusers~s(DOY,melt_DOY,bs="tp",k=12)+
 summary(mod_day_all)
 plot(mod_day_all,pages=1,residuals=TRUE)
 
+##Creates new data for prediction
 gam_pred_data <- expand.grid(DOY=seq(1,365,by=1),melt_DOY=seq(90,240,by=1),DOW=6,year=2013,
                              nearest_center=c("Mowich","Paradise","Sunrise","Tipsoo"))
 gam_pred_data$Users <- predict(mod_day_all,newdata=gam_pred_data,type="response")
@@ -187,7 +188,7 @@ gam_pred_max$flwrend <- gam_pred_max$melt_DOY + flwr_end
 gam_pred_max$flwrmax <- gam_pred_max$melt_DOY + flwr_max
 
 
-pdf("./figs/Flickr_gam_2d_fits.pdf",width=5,height=4)
+pdf("./figs/Flickr_vistor_gam_2d_fits.pdf",width=5,height=4)
 ggplot(gam_pred_data)+
   geom_raster(aes(y=DOY,x=melt_DOY,fill=Users),alpha=1)+
   scale_fill_gradientn(colours = rev(rainbow(8,start=0,end=0.6)))+
@@ -210,7 +211,7 @@ ggplot(gam_pred_data)+
   theme_bw()
 dev.off()
 
-pdf("./figs/Flickr_gam_2d_se.pdf",width=5,height=4)
+pdf("./figs/Flickr_visitor_gam_2d_se.pdf",width=5,height=4)
 ggplot(gam_pred_data)+
   geom_raster(aes(y=DOY,x=melt_DOY,fill=SE),alpha=1)+
   scale_fill_gradientn(colours = rev(rainbow(8,start=0,end=0.6)))+
@@ -340,6 +341,7 @@ DOW <- as.numeric(as.factor(days_samp$DOW))
 year <- as.numeric(as.factor(days_samp$year))
 site <- as.numeric(days_samp$nearest_center)
 group <- as.numeric(factor(paste(days_samp$year,days_samp$nearest_center)))
+access <- as.numeric(days_samp$nearest_center %in% c("Paradise","Tipsoo")) + 1
 n <- length(obsy)
 nyears <- length(unique(year))
 nsites <- length(unique(site))
@@ -396,7 +398,8 @@ cat("
     ",
     fill=TRUE, file="./scratch/xyerror_day_combined_nb.txt")
 
-# write model where day of week, site and year have random height effects, but common slopes and intercepts on opt and width.
+# write model where day of week, site and year have random height effects, 
+# but common fixed slopes and intercepts on opt and width.
 cat("
     model{
     ## Priors
@@ -426,6 +429,9 @@ cat("
     }
     for (l in 1:nsite){
     height_int_site[l] ~ dnorm(0,site_height_int_tau)
+    opt_int_site[l] ~ dnorm(0,0.001)
+    opt_slope_site[l] ~ dnorm(0,0.001)
+    width_int_site[l] ~ dnorm(0,0.001)
     }
     for (m in 1:ndow){
     height_int_dow[m] ~ dnorm(0,dow_height_int_tau)
@@ -436,23 +442,77 @@ cat("
     x2true[i] ~ dnorm(0,pop_taux)
     x2[i] ~ dnorm(x2true[i],tau_obs)
     height[i] <- height_slope * x2true[i] + height_int_yr[year[i]] + height_int_site[site[i]] + height_int_dow[dow[i]]
-    opt[i] <- opt_int + opt_slope * x2true[i]
-    width[i] <- exp(width_int + width_slope * x2true[i]) * -1
+    opt[i] <- opt_int_site[site[i]] + opt_slope_site[site[i]] * x2true[i]
+    width[i] <- exp(width_int_site[site[i]] + width_slope * x2true[i]) * -1
     log(mu[i]) <- width[i] * (x1[i] - opt[i])^2 + height[i] 
     p[i] <- r/(r+mu[i])
     y[i] ~ dnegbin(p[i],r)
     }
     }
     ",
-    fill=TRUE, file="./scratch/xyerror_day_combined_nb.txt")
+    fill=TRUE, file="./scratch/xyerror_day_site_nb.txt")
+
+# write model where day of week, site and year have random height effects, 
+# but fixed slopes and intercepts on opt and width that vary by access.
+cat("
+    model{
+    ## Priors
+    height_slope ~ dnorm(0,1)T(-5,5)
+    opt_int ~ dnorm(0,0.01)T(-20,20)
+    opt_slope ~ dnorm(0,0.01)T(-5,5)
+    width_int ~ dnorm(0,0.01)T(-20,20)
+    width_slope ~ dnorm(0,0.01)T(-20,20)
+    year_height_int_sd ~ dgamma(1,0.1)
+    year_height_int_tau <- pow(year_height_int_sd,-2)
+    site_height_int_sd ~ dgamma(1,0.1)
+    site_height_int_tau <- pow(site_height_int_sd,-2)
+    dow_height_int_sd ~ dgamma(1,0.1)
+    dow_height_int_tau <- pow(dow_height_int_sd,-2)
+    #group_opt_int_sd ~ dgamma(1,0.1)
+    #group_opt_int_tau <- pow(group_opt_int_sd,-2)
+    err_sd ~ dunif((sd_obs - 0.1),(sd_obs + 0.1))
+    tau_obs <- 1 / (err_sd * err_sd)
+    r ~ dgamma(1,0.1)
+    
+    ##Random effects priors.
+    for (j in 1:nyr){
+    height_int_yr[j] ~ dnorm(0,year_height_int_tau)
+    }
+    for (l in 1:nsite){
+    height_int_site[l] ~ dnorm(0,site_height_int_tau)
+    }
+    for (m in 1:ndow){
+    height_int_dow[m] ~ dnorm(0,dow_height_int_tau)
+    }
+    for (p in 1:naccess){
+    opt_int_access[p] ~ dnorm(0,0.001)
+    opt_slope_access[p] ~ dnorm(0,0.001)
+    width_int_access[p] ~ dnorm(0,0.001)
+    width_slope_access[p] ~ dnorm(0,0.001)
+    }
+    
+    ## Likelihood
+    for (i in 1:n){
+    x2true[i] ~ dnorm(0,pop_taux)
+    x2[i] ~ dnorm(x2true[i],tau_obs)
+    height[i] <- height_slope * x2true[i] + height_int_yr[year[i]] + height_int_site[site[i]] + height_int_dow[dow[i]]
+    opt[i] <- opt_int_access[access[i]] + opt_slope_access[access[i]] * x2true[i]
+    width[i] <- exp(width_int_access[access[i]] + width_slope_access[access[i]] * x2true[i]) * -1
+    log(mu[i]) <- width[i] * (x1[i] - opt[i])^2 + height[i] 
+    p[i] <- r/(r+mu[i])
+    y[i] ~ dnegbin(p[i],r)
+    }
+    }
+    ",
+    fill=TRUE, file="./scratch/xyerror_day_access_nb.txt")
 
 
 # bundle data
 jags_d <- list(x1 = x1, x2 = obsx2, y = obsy, sd_obs = sdobs, 
-               pop_taux = pop_taux2,year = year,site=site, group=group,dow=DOW,
-               nyr=nyears, nsite=nsites, ngroup=ngroups,ndow=nDOW, n = n)
+               pop_taux = pop_taux2,year = year,site=site, access=access,dow=DOW,
+               nyr=nyears, nsite=nsites, naccess=2,ndow=nDOW, n = n)
 
-# initiate model
+# initiate common model
 mod2 <- jags.model("./scratch/xyerror_day_combined_nb.txt", data=jags_d,
                    n.chains=3, n.adapt=1000)
 update(mod2, n.iter=10000)
@@ -466,11 +526,47 @@ out2 <- coda.samples(mod2, n.iter=10000, thin=10,
                                       "year_height_int_sd","site_height_int_sd",
                                       "dow_height_int_sd"))
 gelman.diag(out2)
-save(out2,file="./scratch/visitors_jags_output_2011_2014.Rdata",compress=TRUE)
+save(out2,file="./scratch/visitors_jags_common_2011_2015.Rdata",compress=TRUE)
+load("./scratch/visitors_jags_common_2011_2015.Rdata")
+
+# initiate site-specific model
+mod3 <- jags.model("./scratch/xyerror_day_site_nb.txt", data=jags_d,
+                   n.chains=3, n.adapt=1000)
+update(mod3, n.iter=10000)
+
+# simulate posterior
+out3 <- coda.samples(mod3, n.iter=10000, thin=10,
+                     variable.names=c("height_slope","height_int_dow",
+                                      "height_int_yr","height_int_site",
+                                      "opt_int_site","opt_slope_site", 
+                                      "width_int_site","width_slope",
+                                      "year_height_int_sd","site_height_int_sd",
+                                      "dow_height_int_sd"))
+gelman.diag(out3)
+save(out3,file="./scratch/visitors_jags_site_commonwidthslope_2011_2015.Rdata",compress=TRUE)
+load("./scratch/visitors_jags_site_commonwidthslope_2011_2015.Rdata")
+
+# initiate common model
+mod4 <- jags.model("./scratch/xyerror_day_access_nb.txt", data=jags_d,
+                   n.chains=3, n.adapt=1000)
+update(mod4, n.iter=10000)
+
+# simulate posterior
+out4 <- coda.samples(mod4, n.iter=10000, thin=10,
+                     variable.names=c("height_slope","height_int_dow",
+                                      "height_int_yr","height_int_site",
+                                      "opt_int_access","opt_slope_access", 
+                                      "width_int_access","width_slope_access",
+                                      "year_height_int_sd","site_height_int_sd",
+                                      "dow_height_int_sd"))
+gelman.diag(out4)
+save(out4,file="./scratch/visitors_jags_access_2011_2015.Rdata",compress=TRUE)
+load("./scratch/visitors_jags_access_2011_2015.Rdata")
+
 
 ####Visualizes the JAGS fit ####
 jags_pred_data <- expand.grid(DOY=seq(1,365,by=1),
-                              melt_DOY=seq(100,240,by=1))
+                              melt_DOY=seq(100,220,by=1))
 
 jags_fit_fun <- function(height_int,height_slope,
                          opt_int,opt_slope,
@@ -487,28 +583,34 @@ jags_fit_fun <- function(height_int,height_slope,
   return(mu)
 }
 
-jags_meds <- summary(out2)$quantiles[,3]
+jags_meds <- summary(out3)$quantiles[,3]
 jags_pred_data$predmu <- jags_fit_fun(height_int=jags_meds["height_int_site[2]"],
                                      height_slope=jags_meds["height_slope"],
-                                     width_int=jags_meds["width_int"],
+                                     width_int=jags_meds["width_int_site[2]"],
                                      width_slope=jags_meds["width_slope"],
-                                     opt_int=jags_meds["opt_int"],
-                                     opt_slope=jags_meds["opt_slope"],
+                                     opt_int=jags_meds["opt_int_site[2]"],
+                                     opt_slope=jags_meds["opt_slope_site[2]"],
                                      x1vec=jags_pred_data$DOY/100 - 2,
                                      x2vec=jags_pred_data$melt_DOY/100 - 2)
+pdf("./figs/jags_fit_users_common.pdf",width=6,height=4)
 ggplot(jags_pred_data)+
   geom_raster(aes(y=DOY,x=melt_DOY,fill=predmu),alpha=1)+
   scale_fill_gradientn(colours = rev(rainbow(8,start=0,end=0.6)))+
   geom_abline(slope=1,intercept=0)+
   geom_point(aes(y=DOY,x=melt_DOY,size=nusers),
-             data=subset(days_snowmelt, nearest_center == "Paradise"),alpha=0.1)+
+             data=days_snowmelt,alpha=0.05)+
+  xlab("Day of Snow Melt")+
+  ylab("Day of Year")+
+  guides(fill=guide_colorbar("Predicted Mean"),
+         size=guide_legend("Number of Users"))+
   theme_bw()
+dev.off()
 
 ##Visualizes the fit against data for individual sites and years.
-ggplot(filter(jags_pred_data,melt_DOY==139))+
+ggplot(filter(jags_pred_data,melt_DOY==170))+
   geom_line(aes(x=DOY,y=predmu))+
-  geom_line(aes(x=DOY,y=nusers), linetype="dotted",
-            data=subset(days_snowmelt,nearest_center=="Paradise" & year==2015))+
+  geom_point(aes(x=DOY,y=nusers),
+            data=subset(days_snowmelt,nearest_center=="Paradise" & year==2013))+
   theme_bw()
 
 

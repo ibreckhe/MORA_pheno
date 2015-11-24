@@ -24,7 +24,7 @@ f_all <- filter(f_all,Phenophase!="np"&
                       Species != "other" &
                       days_since_snow > -100 &
                        datetaken_DOY > 90 &
-                       datetaken_DOY < 305 &
+                       datetaken_DOY < 330 &
 #                      year != 2012 &
 #                      year != 2014 &
                       locfact %in% small_locs)
@@ -180,14 +180,6 @@ ggplot(f_flwr,groups=yearfact)+
   ylim(c(0,7))+
   theme_bw()
 
-ggplot(f_all,groups=yearfact)+
-  geom_point(aes(x=days_since_snow,y=nSpp),
-             position=position_jitter(height=0.1),size=0.1)+
-  geom_smooth(aes(x=days_since_snow,y=Flwr),method="gam",formula=y~s(x),se=TRUE,
-              method.args=list(family="nb",optimizer="perf"))+
-  #  facet_grid(facets=nearest_center~.)+
-  ylim(c(0,7))+
-  theme_bw()
 
 ####Generalized additive model####
 gam2011 <-  gam(Flwr~s(sdd_pred,datetaken_DOY,bs="tp",k=8)+nearest_center,
@@ -195,7 +187,7 @@ gam2011 <-  gam(Flwr~s(sdd_pred,datetaken_DOY,bs="tp",k=8)+nearest_center,
 summary(gam2011)
 plot(gam2011,pages=1,residuals=TRUE)
 
-gam_all<-  gam(Flwr~s(sdd_pred,datetaken_DOY,bs="tp",k=8)+yearfact+
+gam_all<-  gam(Flwr~s(sdd_pred,datetaken_DOY,bs="tp",k=10)+yearfact+
                  nearest_center*datetaken_DOY,
                 family=binomial("logit"), data = f_flwr)
 summary(gam_all)
@@ -329,11 +321,45 @@ x1_n <- x1[obsy==0]
 obsx2_n <- obsx2[obsy==0]
 
 par(mfrow=c(1,1))
-plot(obsx2_n,x1_n,col=year,pch=20,cex=0.2)
+plot(obsx2_n,x1_n,col="black",pch=20,cex=0.2)
 points(obsx2_t,x1_t,col="red",pch=20,cex=0.3)
 abline(0,1,lty=2)
 
-## specify model
+## specify model with common parameters across all sites.
+cat("
+    model {
+    ## Priors
+    height_int ~ dunif(-20,20)
+    height_slope ~ dunif(-5,5)
+    opt_int ~ dunif(-20,20)
+    opt_slope ~ dunif(-5,5)
+    width_int ~ dunif(-50,20)
+    width_slope ~ dnorm(0,0.1)T(-10,10)
+    group_sd ~ dunif(0,20)
+    group_tau <- pow(group_sd,-2)
+    err_sd ~ dunif((sd_obs - 0.01),(sd_obs + 0.01))
+    tau_obs <- 1 / (err_sd * err_sd)
+   
+    ## Random effects priors
+    for (j in 1:ngroups){
+    height_grp[j] ~ dnorm(0,group_tau)
+    }
+    
+    ## Likelihood
+    for (i in 1:n){
+    x2true[i] ~ dnorm(0,pop_taux)
+    x2[i] ~ dnorm(x2true[i],tau_obs)
+    height[i] <- height_int + height_slope * x2true[i] + height_grp[group[i]] 
+    opt[i] <- opt_int + opt_slope * x2true[i]
+    width[i] <- exp(width_int + width_slope * x2true[i]) * -1
+    logit(alpha[i]) <- width[i] * (x1[i] - opt[i])^2 + height[i] 
+    y[i] ~ dbern(alpha[i])
+    }
+    }
+    ", fill=T, file="./scratch/xerror_common.txt")
+
+
+## specify model with a separate opt intercept for each site.
 cat("
     model {
     ## Priors
@@ -365,13 +391,13 @@ cat("
       x2true[i] ~ dnorm(0,pop_taux)
       x2[i] ~ dnorm(x2true[i],tau_obs)
       height[i] <- height_int + height_slope * x2true[i] + height_grp[group[i]] 
-      opt[i] <- opt_slope * x2true[i] + opt_int_site[site[i]] + o
+      opt[i] <- opt_slope * x2true[i] + opt_int_site[site[i]]
       width[i] <- exp(width_int + width_slope * x2true[i]) * -1
       logit(alpha[i]) <- width[i] * (x1[i] - opt[i])^2 + height[i] 
       y[i] ~ dbern(alpha[i])
     }
     }
-    ", fill=T, file="./scratch/xerror.txt")
+    ", fill=T, file="./scratch/xerror_siteopt.txt")
 
 # bundle data
 jags_d <- list(x1 = x1, x2 = obsx2, y = obsy, sd_obs = sdobs, 
@@ -379,15 +405,78 @@ jags_d <- list(x1 = x1, x2 = obsx2, y = obsy, sd_obs = sdobs,
                ngroups = ngroups,nsites=nsites, n = length(x1))
 
 # initiate model
-mod2 <- jags.model("./scratch/xerror.txt", data=jags_d,
+mod2 <- jags.model("./scratch/xerror_common.txt", data=jags_d,
                    n.chains=3, n.adapt=1000)
 update(mod2, n.iter=10000)
 
 # simulate posterior
 out2 <- coda.samples(mod2, n.iter=10000, thin=10,
                      variable.names=c("height_int","height_slope", 
+                                      "opt_slope", "opt_int",
+                                      "width_int","width_slope",
+                                      "group_sd"))
+gelman.diag(out2)
+save(out2,file="./scratch/jags_flower_output_common_2011_2015.Rdata",compress=TRUE)
+load("./scratch/jags_flower_output_common_2011_2015.Rdata")
+
+
+# initiate model
+mod3 <- jags.model("./scratch/xerror_siteopt.txt", data=jags_d,
+                   n.chains=3, n.adapt=1000)
+update(mod2, n.iter=10000)
+
+# simulate posterior
+out3 <- coda.samples(mod3, n.iter=10000, thin=10,
+                     variable.names=c("height_int","height_slope", 
                                       "opt_slope", "opt_int_site",
                                       "width_int","width_slope",
                                       "site_opt_int_sd","group_sd"))
-gelman.diag(out2)
-save(out2,file="./scratch/jags_output_2011_2014.Rdata",compress=TRUE)
+gelman.diag(out3)
+save(out3,file="./scratch/jags_flower_output_siteopt_2011_2015.Rdata",compress=TRUE)
+
+####Plots JAGS Predictions####
+jags_pred_data <- expand.grid(sdd_pred=seq(110,230,by=1),datetaken_DOY=seq(100,350,by=1),
+                             nearest_center=c("Mowich","Paradise","Sunrise","Tipsoo"),yearfact=2014)
+
+jags_fit_fun <- function(height_int,height_slope,
+                         opt_int,opt_slope,
+                         width_int,width_slope,
+                         x1vec,x2vec){
+  #Checks inputs.
+  stopifnot(length(x1vec)==length(x2vec))
+  
+  #Calculates the value of the response.
+  height <- height_int + height_slope * x2vec
+  opt <- opt_int + opt_slope * x2vec
+  width<- exp(width_int + width_slope * x2vec) * -1
+  mu <- exp(width * (x1vec - opt)^2 + height)
+  return(mu)
+}
+
+jags_meds <- summary(out2)$quantiles[,3]
+jags_pred_data$predmu <- jags_fit_fun(height_int=jags_meds["height_int"],
+                                      height_slope=jags_meds["height_slope"],
+                                      width_int=jags_meds["width_int"],
+                                      width_slope=jags_meds["width_slope"],
+                                      opt_int=jags_meds["opt_int"],
+                                      opt_slope=jags_meds["opt_slope"],
+                                      x1vec=jags_pred_data$datetaken_DOY/100 - 2,
+                                      x2vec=jags_pred_data$sdd_pred/100 - 2)
+
+pdf("./figs/jags_fit_flower_common.pdf",width=6,height=4)
+ggplot(jags_pred_data)+
+  geom_raster(aes(y=datetaken_DOY,x=sdd_pred,fill=predmu),alpha=1)+
+  scale_fill_gradientn(colours = rev(rainbow(8,start=0,end=0.6)))+
+  geom_abline(slope=1,intercept=0)+
+  geom_point(aes(y=datetaken_DOY,x=sdd_pred,
+                 shape=factor(Flwr),color=factor(Flwr)),
+             data=f_samp,alpha=0.5)+
+  scale_color_grey(start=0,end=1)+
+  xlim(c(110,230))+
+  ylim(c(100,350))+
+  xlab("Day of Snow Melt")+
+  ylab("Day of Year")+
+  guides(fill=guide_colorbar("Predicted Prob."),
+         size=guide_legend("Flowering"))+
+  theme_bw()
+dev.off()
